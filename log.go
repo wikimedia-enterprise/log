@@ -2,11 +2,13 @@
 package log
 
 import (
+	"context"
 	"log"
 	"os"
 	"sort"
 	"time"
 
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -69,6 +71,13 @@ func Fatal(msg any, fds ...Field) {
 	logger.Fatal(msg, fds...)
 }
 
+// Panic logs a message with the "panic" severity level.
+// It takes a message and zero or more fields.
+// Also it will panic.
+func Panic(msg any, fds ...Field) {
+	logger.Panic(msg, fds...)
+}
+
 // Sync calls the underlying Core's Sync method, flushing any buffered log
 // entries. Applications should take care to call Sync before exiting.
 func Sync() error {
@@ -100,6 +109,11 @@ type FatalLogger interface {
 	Fatal(msg any, fds ...Field)
 }
 
+// PanicLogger is an interface for logging messages with the "panic" severity level.
+type PanicLogger interface {
+	Panic(msg any, fds ...Field)
+}
+
 // Synchronizer is an interface that exposes Sync() method.
 type Synchronizer interface {
 	Sync() error
@@ -112,6 +126,7 @@ type Logger interface {
 	DebugLogger
 	ErrorLogger
 	FatalLogger
+	PanicLogger
 	Synchronizer
 }
 
@@ -281,8 +296,23 @@ func (l *Log) Fatal(msg any, fds ...Field) {
 	l.zap.Fatal(getMessage(msg), fds...)
 }
 
+// Fatal logs a message with the "panic" severity level.
+// It takes a message and zero or more fields.
+// Also it will panic.
+func (l *Log) Panic(msg any, fds ...Field) {
+	l.zap.Panic(getMessage(msg), fds...)
+}
+
 // Sync calls the underlying Core's Sync method, flushing any buffered log
 // entries. Applications should take care to call Sync before exiting.
 func (l *Log) Sync() error {
 	return l.zap.Sync()
+}
+
+func TraceID(ctx context.Context) Field {
+	sc := trace.SpanContextFromContext(ctx)
+	if !sc.IsValid() {
+		return Any("traceid", "")
+	}
+	return Any("traceid", sc.TraceID().String())
 }

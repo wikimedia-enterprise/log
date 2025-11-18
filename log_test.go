@@ -27,7 +27,7 @@ func (s *logTestSuite) TestLogger() {
 func (s *logTestSuite) TestGetZap() {
 	s.Assert().NotNil(GetZap())
 }
-func captureOutput(f func()) (string, string) {
+func captureOutput(s *logTestSuite, f func()) (string, string) {
 	// Save original stdout and stderr
 	oldStdout := os.Stdout
 	oldStderr := os.Stderr
@@ -44,14 +44,16 @@ func captureOutput(f func()) (string, string) {
 	outC := make(chan string)
 	go func() {
 		var buf bytes.Buffer
-		io.Copy(&buf, rOut)
+		_, err := io.Copy(&buf, rOut)
+		s.Nil(err)
 		outC <- buf.String()
 		close(outC)
 	}()
 	errC := make(chan string)
 	go func() {
 		var buf bytes.Buffer
-		io.Copy(&buf, rErr)
+		_, err := io.Copy(&buf, rErr)
+		s.Nil(err)
 		errC <- buf.String()
 		close(errC)
 	}()
@@ -74,7 +76,7 @@ func (s *logTestSuite) TestDefaultStderrLogger() {
 	os.Setenv("DISABLE_SPLIT_LOGGING", "1")
 	os.Setenv("LOG_LEVEL", "info")
 
-	stdout, stderr := captureOutput(func() {
+	stdout, stderr := captureOutput(s, func() {
 		lgr, err := New()
 		s.Nil(err)
 		lgr.Info("info logging")
@@ -89,7 +91,7 @@ func (s *logTestSuite) TestSplitStreamLogger() {
 	os.Setenv("DISABLE_SPLIT_LOGGING", "")
 	os.Setenv("LOG_LEVEL", "info")
 
-	stdout, stderr := captureOutput(func() {
+	stdout, stderr := captureOutput(s, func() {
 		lgr, err := New()
 		s.Nil(err)
 		lgr.Info("info logging")
